@@ -1,0 +1,62 @@
+name: 跑跑卡丁車公告監控
+
+on:
+  schedule:
+    - cron: "3-59/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: popkart-news-monitor
+  cancel-in-progress: false
+
+jobs:
+  check-news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 取得程式與公告歷史
+        id: checkout
+        uses: actions/checkout@v4
+      - name: 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: 安裝相依套件
+        run: python -m pip install -r requirements.txt
+      - name: 檢查天成跑跑公告並通知 Discord
+        run: |
+          if [ -f .monitor_initialized ]; then
+            python notifier.py --once
+          else
+            python notifier.py --once --record-only
+            touch .monitor_initialized
+          fi
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_MENTION_ROLE_ID: everyone
+      - name: 檢查 Nexon 公告並通知 Discord
+        run: |
+          if [ -f .nexon_initialized ]; then
+            python "抓取跑跑3公告/爬蟲.py" --once
+          else
+            python "抓取跑跑3公告/爬蟲.py" --once --record-only
+            touch .nexon_initialized
+          fi
+        env:
+          DISCORD_WEBHOOK_URL_NEXON: ${{ secrets.DISCORD_WEBHOOK_URL_NEXON || secrets.DISCORD_WEBHOOK_URL }}
+      - name: 儲存公告歷史
+        if: always() && steps.checkout.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- history.json .monitor_initialized .nexon_initialized "抓取跑跑3公告/nexon_history.json"
+          if git diff --cached --quiet; then
+            echo "公告歷史沒有變更。"
+          else
+            git commit -m "Update announcement history"
+            git push
+          fi

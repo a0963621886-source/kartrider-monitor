@@ -1,0 +1,8 @@
+{
+  "discord_webhook_url": "",
+  "check_interval_seconds": 300,
+  "fetch_article_preview": true,
+  "first_run_behavior": "record_only",
+  "mention_role_id": "everyone",
+  "notify_categories": ["系统公告", "游戏新闻", "活动公告", "赛事专题"]
+}

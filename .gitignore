@@ -1,0 +1,7 @@
+config.json
+config_nexon.json
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+env/
